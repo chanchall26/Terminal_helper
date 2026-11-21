@@ -40,7 +40,29 @@ export function hasAssignableLabel(labels, allowed) {
 }
 
 export function isAssignmentRequest(body = '') {
-  return /(^|\s)\/assign\b/i.test(body) || /\b(i(?:'d| would) like to work on (?:this|it)|i want to work on (?:this|it)|can i work on (?:this|it))\b/i.test(body);
+  return /(^|\s)\/(?:assign|claim)\b/i.test(body)
+    || /\b(?:i(?:'d| would) like to work on (?:this|it)|i want to work on (?:this|it)|can i work on (?:this|it)|(?:please\s+)?assign(?:\s+(?:this|it))?\s+to me)\b/i.test(body);
+}
+
+export function isUnassignmentRequest(body = '') {
+  return /(^|\s)\/(?:unassign|unclaim)\b/i.test(body)
+    || /\b(?:please )?unassign me\b/i.test(body);
+}
+
+export function extractTargetAssignee(body = '') {
+  const match = String(body).match(/(?:^|\s)\/(?:assign|claim|unassign|unclaim)\s+@?([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\b/i);
+  if (!match) return null;
+  const candidate = match[1];
+  if (['me', 'this', 'it', 'here'].includes(candidate.toLowerCase())) return null;
+  return candidate;
+}
+
+export function isMaintainer({ comment = {}, repository = '' } = {}) {
+  const association = String(comment?.author_association ?? '').toUpperCase();
+  if (['OWNER', 'COLLABORATOR', 'MEMBER'].includes(association)) return true;
+  const owner = repository.split('/')[0]?.toLowerCase();
+  const commenter = String(comment?.user?.login ?? '').toLowerCase();
+  return Boolean(owner && commenter && owner === commenter);
 }
 
 export function issueMarker(id) {
@@ -53,6 +75,10 @@ export function hasDuplicateSearchResult(search) {
 
 export function assignmentMarker(login, timestamp) {
   return `<!-- repository-automation:assignment assignee=${login} assigned_at=${timestamp} -->`;
+}
+
+export function unassignmentMarker(login, timestamp) {
+  return `<!-- repository-automation:unassignment assignee=${login} unassigned_at=${timestamp} -->`;
 }
 
 export function buildIssueBody(candidate) {

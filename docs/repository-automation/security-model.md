@@ -23,9 +23,12 @@ write code, issues, or pull requests.
 - Maximum issue creation per run is configured and defaults to three.
 - Assignment requests for the same issue are serialized. Each queued run then
   fetches the live issue state before checking that it is open, labelled for
-  assignment, unassigned, and that the requester is below the configured
+  assignment, unassigned, and that the target contributor is below the configured
   open-assignment limit before writing.
-- Before assignment, the workflow asks GitHub whether the requester is an
+- Maintainers (`OWNER`, `COLLABORATOR`, `MEMBER`) can delegate assignments (`/assign @username`)
+  or unassign tasks (`/unassign`). Non-maintainers are strictly prevented from delegating
+  assignments or unassigning others (self-assignment/unassignment only).
+- Before assignment, the workflow asks GitHub whether the target is an
   eligible repository assignee. An ineligible requester receives contribution
   guidance and no assignment write is attempted.
 - Comment-triggered workflows treat all issue and comment text as untrusted
