@@ -32,6 +32,8 @@ The autonomous repository management system has been incrementally built, harden
 | **#15** | `Automation hardening` | Merged (`d4a9a5a`) | Concurrency queueing and live-state check to eliminate stale-event `/assign` race conditions; all 4 Rust CI checks verified. |
 | **#16** | `fix: handle ineligible assignment requests safely` | Merged (`957dfdc`) | Pre-assignment GitHub eligibility check; rejects ineligible assignees gracefully with guidance without throwing API errors. |
 | **#17** | `fix: allow manual Copilot analysis runs` | Merged (`74f78b1`) | Isolated Copilot CLI in GitHub Actions; enabled manual report-only dispatch with GitHub Student Developer Pack token (`COPILOT_GITHUB_TOKEN`). Verified in Action run `#41601254578`. |
+| **#18** & **#20** | `Feat/universal automation and docs` | Merged (`6236557`) | Master architectural documentation suite, universal cross-platform 1-step bootstrapper (`bootstrap.mjs`, `bootstrap.sh`, `bootstrap.ps1`), and unit tests. |
+| **#19** | `feat: support Actions-only automation bootstrap` | Merged (`4a3f3b3`) | Cleanly separated Actions-only deployment flag (`--without-copilot`) for universal bootstrapping. |
 
 ---
 
@@ -45,7 +47,7 @@ All workflows are located in `.github/workflows/` and declare minimal, explicit 
 | `release.yml` | `push: tags` | Scoped release | **Active** | Builds Windows & Linux release packages. |
 | `repository-automation-inspect.yml` | Daily / Weekly cron, `workflow_dispatch` | Read token (Write only in publisher job) | **Active (Dry-run)** | Executes project checks; uploads `inspection-report.json`. Issue publishing is guarded by `REPOSITORY_AUTOMATION_ISSUE_WRITES` (default: `false`). |
 | `repository-automation-labels.yml` | `workflow_dispatch` | `issues: write` | **Active** | Creates standard taxonomy labels (`good first issue`, `NSOC`, `status: in progress`, etc.). |
-| `repository-automation-assignment.yml` | `issue_comment: created` | `issues: write` | **Active** | Serialized per-issue `/assign` handler. Verifies live issue state, contributor quota, and eligibility before writing. |
+| `repository-automation-assignment.yml` | `issue_comment: created` | `issues: write` | **Active** | Serialized `/assign` & `/unassign` handler. Supports self-assignment (`/assign`, `/claim`), maintainer delegation (`/assign @user`), implicit applicant comment resolution, and `/unassign`. |
 | `repository-automation-pr-policy.yml` | `pull_request: opened, synchronize` | `pull-requests: write` | **Active** | Advisory PR comment reviewing issue linkages and warning on sensitive paths (workflows, scripts, Dockerfiles). |
 | `repository-automation-maintenance.yml` | Weekly cron, `workflow_dispatch` | `issues: write` | **Active** | Inactivity reminder after 7 days; unassignment after 14 days following warning. |
 | `repository-automation-merge-gate.yml` | `pull_request: review, status` | `pull-requests: write`, `contents: read` | **Guarded** | Strict squash auto-merge gate. Requires `REPOSITORY_AUTOMATION_AUTOMERGE=true`, approval, passing CI, and no sensitive file modifications. |

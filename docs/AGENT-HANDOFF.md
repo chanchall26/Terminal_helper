@@ -28,7 +28,7 @@
 │       ├── release.yml                   # Release packager for Linux and Windows binaries
 │       ├── repository-automation-inspect.yml       # Health inspection & verified issue discovery
 │       ├── repository-automation-labels.yml        # Taxonomy label initializer
-│       ├── repository-automation-assignment.yml    # Contributor /assign comment handler
+│       ├── repository-automation-assignment.yml    # Contributor /assign, maintainer delegation, and /unassign handler
 │       ├── repository-automation-pr-policy.yml     # PR policy check & sensitive file warning
 │       ├── repository-automation-maintenance.yml   # Stale contributor reminders & unassignment
 │       ├── repository-automation-merge-gate.yml    # Safe opt-in squash auto-merge gate

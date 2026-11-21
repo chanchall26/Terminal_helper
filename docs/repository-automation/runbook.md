@@ -10,12 +10,20 @@
    issue contains evidence, reproducible command, acceptance criteria, and an
    automation fingerprint.
 
-## Contributor assignment
+## Contributor assignment & delegation
 
-Contributors can comment `/assign` on an issue with an eligible difficulty or
+Contributors can comment `/assign` or `/claim` on an issue with an eligible difficulty or
 `NSOC` label. One open automation-managed assignment per contributor is allowed
-by default. The workflow replies with either an assignment confirmation or a
-clear reason it declined. Maintainers can modify the policy in
+by default.
+
+Maintainers (`OWNER`, `COLLABORATOR`, or `MEMBER`) can also assign contributors directly:
+- Using `/assign @username` or `/claim @username`.
+- Or by commenting `/assign` on an issue where a contributor previously requested to work on it; the automation inspects earlier comments and assigns the applicant.
+- Contributors can self-unassign using `/unassign` or `/unclaim`.
+- Maintainers can unassign any assignee using `/unassign @username` or `/unassign`.
+
+The workflow replies with an assignment or unassignment confirmation, adds or removes
+the `status: in progress` label, or provides a clear reason it declined. Maintainers can modify the policy in
 `.github/repository-automation/config.json`.
 
 The weekly maintenance workflow reminds assigned contributors after seven days

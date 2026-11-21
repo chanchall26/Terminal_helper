@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { githubClient } from './lib/common.mjs';
+import { githubClient, isAssignmentRequest } from './lib/common.mjs';
 
 const config = JSON.parse(await readFile('.github/repository-automation/config.json', 'utf8'));
 if (!config.assignment.enabled_by_default) {
@@ -9,9 +9,31 @@ if (!config.assignment.enabled_by_default) {
 const client = githubClient({ token: process.env.GITHUB_TOKEN, repository: process.env.GITHUB_REPOSITORY });
 const issues = await client.request(`/repos/${client.repository}/issues?state=open&labels=${encodeURIComponent('status: in progress')}&per_page=100`);
 const now = Date.now();
-for (const issue of issues.filter((item) => !item.pull_request && item.assignees?.length === 1)) {
+
+function findVirtualAssignee(comments) {
+  let assignee = null;
+  for (const c of comments) {
+    const assignMatch = /repository-automation:assignment assignee=(\S+)/.exec(c.body ?? '');
+    if (assignMatch) assignee = assignMatch[1];
+    const unassignMatch = /repository-automation:unassignment assignee=(\S+)/.exec(c.body ?? '');
+    if (unassignMatch && unassignMatch[1].toLowerCase() === assignee?.toLowerCase()) assignee = null;
+  }
+  return assignee;
+}
+
+for (const issue of issues.filter((item) => !item.pull_request)) {
+  const nativeAssignee = issue.assignees?.[0]?.login;
+  let assignee = nativeAssignee;
+  let isVirtual = false;
+
+  if (!assignee) {
+    const comments = await client.request(`/repos/${client.repository}/issues/${issue.number}/comments?per_page=100`);
+    assignee = findVirtualAssignee(comments);
+    isVirtual = !!assignee;
+    if (!assignee) continue; // label exists but no assignee found, skip
+  }
+
   const inactiveDays = (now - Date.parse(issue.updated_at)) / 86_400_000;
-  const assignee = issue.assignees[0].login;
   const comments = await client.request(`/repos/${client.repository}/issues/${issue.number}/comments?per_page=100`);
   const warningDates = comments
     .map((comment) => /repository-automation:inactivity-warning issued_at=([^\s>]+)/.exec(comment.body ?? '')?.[1])
@@ -22,14 +44,23 @@ for (const issue of issues.filter((item) => !item.pull_request && item.assignees
   const updatedAt = Date.parse(issue.updated_at);
   const warningWindowDays = config.assignment.unassign_after_days - config.assignment.reminder_after_days;
   const warningHasNoNewActivity = latestWarning && updatedAt <= latestWarning;
+
   if (warningHasNoNewActivity && (now - latestWarning) / 86_400_000 >= warningWindowDays) {
-    await client.request(`/repos/${client.repository}/issues/${issue.number}/assignees`, {
-      method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ assignees: [assignee] }),
-    });
+    // Unassign
+    if (!isVirtual) {
+      await client.request(`/repos/${client.repository}/issues/${issue.number}/assignees`, {
+        method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ assignees: [assignee] }),
+      });
+    }
     await client.request(`/repos/${client.repository}/issues/${issue.number}/comments`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body: `@${assignee}, this issue was unassigned after ${config.assignment.unassign_after_days} days without activity so another contributor can pick it up. Please comment if you need it reassigned.` }),
+      body: JSON.stringify({ body: `@${assignee}, this issue was unassigned after ${config.assignment.unassign_after_days} days without activity so another contributor can pick it up. Please comment if you need it reassigned.\n\n<!-- repository-automation:unassignment assignee=${assignee} unassigned_at=${new Date().toISOString()} -->` }),
     });
+    if (isVirtual) {
+      try {
+        await client.request(`/repos/${client.repository}/issues/${issue.number}/labels/${encodeURIComponent('status: in progress')}`, { method: 'DELETE' });
+      } catch (e) { console.warn(`Label removal failed: ${e.message}`); }
+    }
   } else if (inactiveDays >= config.assignment.reminder_after_days && (!latestWarning || latestWarning < updatedAt)) {
     await client.request(`/repos/${client.repository}/issues/${issue.number}/comments`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
