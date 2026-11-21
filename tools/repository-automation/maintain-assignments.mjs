@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { githubClient, isAssignmentRequest } from './lib/common.mjs';
+import { findVirtualAssignee, githubClient } from './lib/common.mjs';
 
 const config = JSON.parse(await readFile('.github/repository-automation/config.json', 'utf8'));
 if (!config.assignment.enabled_by_default) {
@@ -9,17 +9,6 @@ if (!config.assignment.enabled_by_default) {
 const client = githubClient({ token: process.env.GITHUB_TOKEN, repository: process.env.GITHUB_REPOSITORY });
 const issues = await client.request(`/repos/${client.repository}/issues?state=open&labels=${encodeURIComponent('status: in progress')}&per_page=100`);
 const now = Date.now();
-
-function findVirtualAssignee(comments) {
-  let assignee = null;
-  for (const c of comments) {
-    const assignMatch = /repository-automation:assignment assignee=(\S+)/.exec(c.body ?? '');
-    if (assignMatch) assignee = assignMatch[1];
-    const unassignMatch = /repository-automation:unassignment assignee=(\S+)/.exec(c.body ?? '');
-    if (unassignMatch && unassignMatch[1].toLowerCase() === assignee?.toLowerCase()) assignee = null;
-  }
-  return assignee;
-}
 
 for (const issue of issues.filter((item) => !item.pull_request)) {
   const nativeAssignee = issue.assignees?.[0]?.login;

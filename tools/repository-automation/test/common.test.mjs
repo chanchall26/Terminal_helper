@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildIssueBody,
   extractTargetAssignee,
+  findVirtualAssignee,
   fingerprint,
   hasAssignableLabel,
   hasDuplicateSearchResult,
@@ -72,4 +73,15 @@ test('duplicate detection requires a matching issue or pull request', () => {
   assert.equal(hasDuplicateSearchResult({ total_count: 1 }), true);
   assert.equal(hasDuplicateSearchResult({ total_count: '2' }), true);
   assert.equal(hasDuplicateSearchResult({}), false);
+});
+
+test('findVirtualAssignee only tracks type=virtual markers', () => {
+  const comments = [
+    { body: '<!-- repository-automation:assignment assignee=alice type=native assigned_at=2026-01-01 -->' },
+    { body: '<!-- repository-automation:assignment assignee=bob type=virtual assigned_at=2026-01-02 -->' },
+  ];
+  assert.equal(findVirtualAssignee(comments), 'bob');
+  assert.equal(findVirtualAssignee([comments[0]]), null); // native-only → null
+  const unassigned = [...comments, { body: '<!-- repository-automation:unassignment assignee=bob unassigned_at=2026-01-03 -->' }];
+  assert.equal(findVirtualAssignee(unassigned), null);
 });
