@@ -73,12 +73,23 @@ export function hasDuplicateSearchResult(search) {
   return Number(search?.total_count) > 0;
 }
 
-export function assignmentMarker(login, timestamp) {
-  return `<!-- repository-automation:assignment assignee=${login} assigned_at=${timestamp} -->`;
+export function assignmentMarker(login, timestamp, type = 'native') {
+  return `<!-- repository-automation:assignment assignee=${login} type=${type} assigned_at=${timestamp} -->`;
 }
 
 export function unassignmentMarker(login, timestamp) {
   return `<!-- repository-automation:unassignment assignee=${login} unassigned_at=${timestamp} -->`;
+}
+
+export function findVirtualAssignee(comments = []) {
+  let assignee = null;
+  for (const c of comments) {
+    const assignMatch = /repository-automation:assignment assignee=(\S+) type=virtual/.exec(c.body ?? '');
+    if (assignMatch) assignee = assignMatch[1];
+    const unassignMatch = /repository-automation:unassignment assignee=(\S+)/.exec(c.body ?? '');
+    if (unassignMatch && unassignMatch[1].toLowerCase() === assignee?.toLowerCase()) assignee = null;
+  }
+  return assignee;
 }
 
 export function buildIssueBody(candidate) {

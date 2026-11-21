@@ -181,10 +181,23 @@ test('detects virtual assignment and blocks duplicate', async () => {
     payload: event({ actor: 'another-student' }),
     current: currentIssue({ assignees: [] }),
     comments: [
-      { body: 'Assigned to @first-student (virtual)\n\n<!-- repository-automation:assignment assignee=first-student assigned_at=2026-01-01T00:00:00Z -->', user: { login: 'github-actions[bot]' } },
+      { body: 'Assigned to @first-student (virtual)\n\n<!-- repository-automation:assignment assignee=first-student type=virtual assigned_at=2026-01-01T00:00:00Z -->', user: { login: 'github-actions[bot]' } },
     ],
   });
   assert.equal(writesToAssignees(calls).length, 0);
   const commentBodies = postsComment(calls).map(c => JSON.parse(c.body).body);
   assert.ok(commentBodies.some(b => b.includes('already has an active assignee')));
+});
+
+test('ignores stale native assignment marker when user was removed via UI', async () => {
+  // Old marker without type=virtual should be ignored — GitHub UI removal is authoritative
+  const calls = await runAssignment({
+    payload: event({ actor: 'new-student' }),
+    current: currentIssue({ assignees: [] }),
+    comments: [
+      { body: 'Assigned to @old-user\n\n<!-- repository-automation:assignment assignee=old-user type=native assigned_at=2026-01-01T00:00:00Z -->', user: { login: 'github-actions[bot]' } },
+    ],
+  });
+  // Should proceed with assignment since native marker is ignored and no native assignees
+  assert.equal(writesToAssignees(calls).length, 1);
 });

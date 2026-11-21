@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import {
   assignmentMarker,
   extractTargetAssignee,
+  findVirtualAssignee,
   githubClient,
   hasAssignableLabel,
   isAssignmentRequest,
@@ -37,18 +38,6 @@ if (issue.pull_request) {
 
 const maintainer = isMaintainer({ comment: event.comment, repository: client.repository });
 const explicitTarget = extractTargetAssignee(request);
-
-// --- Helper: find virtual assignee from comment markers ---
-function findVirtualAssignee(comments) {
-  let assignee = null;
-  for (const c of comments) {
-    const assignMatch = /repository-automation:assignment assignee=(\S+)/.exec(c.body ?? '');
-    if (assignMatch) assignee = assignMatch[1];
-    const unassignMatch = /repository-automation:unassignment assignee=(\S+)/.exec(c.body ?? '');
-    if (unassignMatch && unassignMatch[1].toLowerCase() === assignee?.toLowerCase()) assignee = null;
-  }
-  return assignee;
-}
 
 // --- UNASSIGN ---
 if (isUnassign) {
@@ -179,6 +168,7 @@ try {
 const delegationNotice = (maintainer && target.toLowerCase() !== actor.toLowerCase())
   ? ` by maintainer @${actor}`
   : '';
-const assignmentType = nativeSuccess ? '' : ' (virtual — contributor is not yet a repository collaborator)';
-await comment(`Assigned to @${target}${delegationNotice}${assignmentType}. Thank you! Please create a focused branch, link your pull request to #${issue.number}, include tests where practical, and do not include credentials, terminal history, or private data.\n\n${assignmentMarker(target, new Date().toISOString())}`);
+const markerType = nativeSuccess ? 'native' : 'virtual';
+const virtualLabel = nativeSuccess ? '' : ' (virtual — contributor is not yet a repository collaborator)';
+await comment(`Assigned to @${target}${delegationNotice}${virtualLabel}. Thank you! Please create a focused branch, link your pull request to #${issue.number}, include tests where practical, and do not include credentials, terminal history, or private data.\n\n${assignmentMarker(target, new Date().toISOString(), markerType)}`);
 console.log(`Assigned #${issue.number} to ${target} (native=${nativeSuccess}).`);
