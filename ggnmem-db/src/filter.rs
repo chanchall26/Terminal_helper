@@ -75,17 +75,12 @@ pub fn should_ingest(command: &str) -> bool {
     // ── Credential / secret patterns ─────────────────────────────────
     // Drop commands that likely contain inline secrets.
     let lower = trimmed.to_lowercase();
-    if lower.contains("password=")
-        || lower.contains("passwd=")
-        || lower.contains("secret=")
-        || lower.contains("token=")
-        || lower.contains("api_key=")
-        || lower.contains("apikey=")
-    {
-        return false;
-    }
-
-    true
+    !lower.contains("password=")
+        && !lower.contains("passwd=")
+        && !lower.contains("secret=")
+        && !lower.contains("token=")
+        && !lower.contains("api_key=")
+        && !lower.contains("apikey=")
 }
 
 #[cfg(test)]
